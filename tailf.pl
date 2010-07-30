@@ -42,8 +42,10 @@ position_in_file;
 #$file_size = -s $file_name
 
 while (1) {
+      # Clear end-of-file condition of the handle
+      # See perldoc perlfaq5 "How do I do a "tail -f" in perl?"
+      seek F, 0, 1;
       iterate while <F>;
-      #warn "HERE\n";
 
       usleep $delay;
       $time_wo_new_lines += $delay;
