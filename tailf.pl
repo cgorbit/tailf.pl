@@ -22,7 +22,7 @@ die unless @ARGV && -r $ARGV[0];
 my $file_name = shift;
 
 my $file_size = -s $file_name;
-my $move_length = 500;
+my $move_length = 1000;
 
 my $delay = 50_000;
 my $time_wo_new_lines = 0;
@@ -89,13 +89,17 @@ sub position_in_file () {
 
             $lines = scalar( () = $buff =~ m/(\n|^)$begin_re /soig );
 
-            $n = $lines if $last;
+            $n = $lines if $last && $n > $lines;
+
+            last if $last;
       }
       #warn "\$lines = $lines\n";
+      #warn "\$n = $n\n";
 
       my $p = -1;
-      my $i = $lines - $n + $buff =~ /\A$begin_re /soi ? 0 : 1;
+      my $i = $lines - $n + ($buff =~ /\A$begin_re /soi ? 0 : 1);
       while ($i && ($p = index $buff, "\n", $p + 1) > -1) {
+            #warn "WITH \$i = $i\n";
             $i-- if substr($buff, $p + 1) =~ m/^$begin_re/i;
       }
       #warn "\$p = $p\n";
@@ -177,7 +181,10 @@ sub hi ($) {
 
                                     if (m/^(\d+)[,.](\d{1,3})(\d*) sec/ois) {
                                           #FIXME \n
-                                          $out .= sprintf "%s%d.%03d%s%s s", ($1 > 0 || $2 > 10) ? '<bold red>' : '<yellow>', $1, $2, '</end>', $3;
+                                          $out .= sprintf "%s%d.%03d%s%s s",
+                                                ($1 > 0 || $2 > 10) ? '<bold red>' : '<yellow>',
+                                                $1, $2, '</end>', $3;
+
                                           $_ = $';
 
                                           #FIXME last FOOBAR
@@ -237,4 +244,10 @@ sub size_changed () {
       $file_size != $old_size
 }
 
-{ my $cleaner; sub clear_screen () { $cleaner ||= `clear`; print "CLEARING SCREEN...\n", v10 x 40; $cleaner } }
+{ my $cleaner;
+sub clear_screen () {
+      $cleaner ||= `clear`;
+
+      $last_line = '';
+      print "CLEARING SCREEN...\n", v10 x 40; $cleaner
+} }
