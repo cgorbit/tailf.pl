@@ -3,8 +3,8 @@
 use strict;
 use warnings;
 
-use Time::HiRes qw/usleep/;
-use Term::ANSIColor qw/:constants/;
+use Time::HiRes qw/usleep gettimeofday tv_interval/;
+use Term::ANSIColor qw/:constants color/;
 
 our $VERSION = 0.01;
 
@@ -39,8 +39,11 @@ open F, "<$file_name" or die "Can't open file $file_name\n";
 
 position_in_file;
 
+#$file_size = -s $file_name
+
 while (1) {
       iterate while <F>;
+      #warn "HERE\n";
 
       usleep $delay;
       $time_wo_new_lines += $delay;
@@ -52,28 +55,55 @@ close F;
 
 sub position_in_file () {
       my $lines = 0;
-      my @buff;
+      my $buff = '';
       my $iteration = 0;
       local $/ = \$move_length;
-
-      while ($lines < $n) {
-            seek F, -($move_length * ++$iteration), 2;
-            push @buff, scalar <F>;
-
-            $lines += length join '', $buff[-1] =~ m/(\n)$begin_re /oig;
-      }
-
-      my $p = -1;
-      my $i = $lines - $n + 1;
-      while ($i && ($p = index $buff[-1], "\n", $p + 1) > -1) {
-            $i-- if substr($buff[-1], $p + 1) =~ m/^$begin_re/i;
-      }
-
-      $buff[-1] = substr $buff[-1], $p + 1;
-
-      iterate for map {"$_\n"} split "\n", join '', reverse @buff;
+      my $n = $n;
 
       seek F, 0, 2;
+      my $initial_pos = tell F;
+
+      my $last;
+
+      while ($lines < $n) {
+            #warn "$lines vs $n\n";
+            my $offset = $move_length * (++$iteration > 1 ? 2 : 1);
+
+            #warn 'WILL SEEK TO ', tell(F) - $offset, v10;
+            if (tell(F) - $offset < 0) {
+                  #warn "SEEK TO BEGINNING\n";
+                  seek F, 0, 0;
+                  $/ = \($file_size % $move_length);
+                  #warn 'WILL READ ', ${$/}, v10;
+                  $last = 1;
+                  #warn "LAST\n" if $last;
+            } else {
+                  seek F, -$offset, 1 or do {
+                        #warn "CAN'T SEEK\n";
+                        $n = $lines;
+                        last;
+                  }
+            }
+
+            $buff = <F> . $buff;
+
+            $lines = scalar( () = $buff =~ m/(\n|^)$begin_re /soig );
+
+            $n = $lines if $last;
+      }
+      #warn "\$lines = $lines\n";
+
+      my $p = -1;
+      my $i = $lines - $n + $buff =~ /\A$begin_re /soi ? 0 : 1;
+      while ($i && ($p = index $buff, "\n", $p + 1) > -1) {
+            $i-- if substr($buff, $p + 1) =~ m/^$begin_re/i;
+      }
+      #warn "\$p = $p\n";
+      #exit;
+
+      iterate for map {"$_\n"} split "\n", substr $buff, $p + 1;
+
+      seek F, $initial_pos, 0;
 }
 
 
@@ -96,7 +126,9 @@ sub iterate () {
 
 sub flush_buff () {
       return unless defined $buff && length $buff;
+#my $t0 = [gettimeofday];
       hi $buff;
+#warn "TIME: ", tv_interval($t0), v10;
       $buff = '';
 } }
 
@@ -104,52 +136,55 @@ sub hi ($) {
       local $_ = shift;
       my $text_copy = $_;
       my $eq;
+      my $out = '';
 
       FOOBAR: {
             if (defined $last_line && $last_line eq $_) {
                   $eq = 1;
-                  print BOLD.RED.'REPEATING PREVIOUS LINE'.RESET, v10;
+                  $out .= '<bold red>REPEATING PREVIOUS LINE</end>' . v10;
 
                   last;
             }
 
-            print v10;
+            $out .= v10;
 
             HIGHS: {
                   if (m/^\[([a-z]{3}) ([a-z]{3}) (\d{2}) (\d{2}):(\d{2}):(\d{2}) (\d{4})\] /ois) {
-                        printf '[%s %s %s %s%s:%s:%s %s%s] ',
-                              $1, $2, $3, BOLD.YELLOW, $4, $5, $6, RESET, $7;
+                        $out .= sprintf '[%s %s %s %s%s:%s:%s %s%s] ',
+                              $1, $2, $3, '<bold yellow>', $4, $5, $6, '</end>', $7;
 
                         $_ = $';
 
+                        s/&/&amp;/g;
+                        s/</&lt;/g;
+                        s/>/&gt;/g;
 
-                        if (m/^\[perl_(warn|emerg)\] /ois) {
-                              printf '[%s%sperl_%s%s] ',
-                                    $1 eq 'emerg' ? BOLD : '', RED, $1, RESET;
+                        if (m/^\[(perl_)?(warn|emerg)\] /ois) {
+                              $out .= sprintf '[<%s%s%s%s%s] ',
+                                    $1 eq 'emerg' ? 'bold ' : '', 'red>', $1, $2, '</end>';
 
                               $_ = $';
 
 
                               if (m/\[([^\]]+)\] /ois) {
-                                    printf '[%s%s%s] ',
-                                          GREEN, $1, RESET;
+                                    $out .= sprintf '[%s%s%s] ',
+                                          '<green>', $1, '</end>';
 
                                     $_ = $';
 
                                     #INFO ... || index($_, "\n") < length($s) - 1
-                                    print v10 if 50 < length $_ || m/\n./;
+                                    $out .= v10 if 50 < length $_ || m/\n./;
 
                                     if (m/^(\d+)[,.](\d{1,3})(\d*) sec/ois) {
                                           #FIXME \n
-                                          printf "%s%d.%03d%s%s s", ($1 > 0 || $2 > 10) ? BOLD.RED : YELLOW, $1, $2, RESET, $3;
+                                          $out .= sprintf "%s%d.%03d%s%s s", ($1 > 0 || $2 > 10) ? '<bold red>' : '<yellow>', $1, $2, '</end>', $3;
                                           $_ = $';
 
                                           #FIXME last FOOBAR
                                           last;
 
                                     } elsif (m/^DBD::mysql::st execute failed/ois) {
-                                          print BOLD, RED, $&, RESET;
-                                          #print RED, $', RESET;
+                                          $out .= "<bold red>$&</end>";
                                           $_ = $';
                                           last;
                                     }
@@ -159,21 +194,38 @@ sub hi ($) {
             }
 
 
-            my $def_color  = CYAN;
-
             #TODO highlight parts here
 
-            s/\bat (\S+) line (\d+)\./'at '.$1.' line '.RED.$2.RESET.$def_color.'.'/eg;
+            s/\bat (\S+) line (\d+)\./at $1 line <red>$2<\/end>./g;
 
-            s{([-a-z._/]+/)?([^/]+\.(?:pm|pl|tpl|cgi))}[YELLOW.$1.BOLD.YELLOW.$2.RESET.$def_color]ieg
+            s{([-a-z._/]+/)?([^/]+\.(?:pm|pl|tpl|cgi))}[<yellow>$1</end><bold yellow>$2</end>]ig
                   or
-            s/\bHealth_[a-z_]+\b/MAGENTA.$&.RESET.$def_color/eig
+            s/\bHealth_[a-z_]+\b/<magenta>$&<\/end>/ig
                   and
-            s/\b(GROUP BY|FROM|ON|SELECT|UPDATE|INSERT|DELETE|WHERE|ORDER BY|(?:LEFT )?JOIN)\b/RED.$1.RESET.$def_color/eig;
+            s/\b(GROUP BY|FROM|ON|SELECT|UPDATE|INSERT|DELETE|WHERE|ORDER BY|(?:LEFT )?JOIN)\b/<red>$1<\/end>/ig;
 
-            print $def_color, $_, RESET;
-            #print "### BEGIN ###\n$_### END ###\n";
+            s/\n$//;
+            $out .= $_ . v10;
       }
+
+      my @colors;
+      $out = join '', map {
+            if ($_ eq '</end>') {
+                  pop @colors;
+                  RESET.color( $colors[-1] || 'reset' );
+            } elsif (m/<([^>]+)>/) {
+                  push @colors, $1;
+                  color $1;
+            } else {
+                  $_
+            }
+      } split /(<\/?[^>]+>)/, $out;
+
+      s/&lt;/</g;
+      s/&gt;/>/g;
+      s/&amp;/&/g;
+
+      print $out;
 
       $last_line = $text_copy;
 }
