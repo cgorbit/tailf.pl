@@ -126,17 +126,16 @@ sub iterate () {
 
       $time_wo_new_lines = 0;
 
-      flush_buff if m/^$begin_re/;
+      flush_buff if m/^$begin_re/o;
 
       $buff .= $_;
 }
 
 sub flush_buff () {
       return unless defined $buff && length $buff;
-#my $t0 = [gettimeofday];
       hi $buff;
-#warn "TIME: ", tv_interval($t0), v10;
       $buff = '';
+      1
 } }
 
 sub hi ($) {
@@ -251,9 +250,7 @@ sub hi ($) {
 
 sub size_changed () {
       my $old_size = $file_size;
-      $file_size = -s $file_name;
-
-      $file_size != $old_size
+      ($file_size = -s $file_name) != $old_size
 }
 
 { my $cleaner;
