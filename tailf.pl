@@ -3,6 +3,7 @@
 use strict;
 use warnings;
 
+#use POSIX qw/strftime/;
 use Time::HiRes qw/usleep gettimeofday tv_interval/;
 use Term::ANSIColor qw/:constants color/;
 
@@ -250,7 +251,8 @@ sub size_changed () {
 { my $cleaner;
 sub clear_screen () {
       $cleaner ||= `clear`;
+      my $time = sprintf "%02d:%02d:%02d", (localtime)[2,1,0];
 
       $last_line = '';
-      print "\n\nCLEARING SCREEN...\n", v10 x 40; $cleaner
+      print "\n\nCLEARING SCREEN at $time...\n", v10 x 40; $cleaner
 } }
