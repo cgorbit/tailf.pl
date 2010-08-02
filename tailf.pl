@@ -16,6 +16,7 @@ sub flush_buff ();
 sub is_buffer ();
 sub clear_screen ();
 sub position_in_file ();
+sub get_term_columns ();
 
 
 die unless @ARGV && -r $ARGV[0];
@@ -155,7 +156,7 @@ sub hi ($) {
             $out .= v10;
 
             HIGHS: {
-                  my $current_position = 0;
+                  my $current_position = 1;
 
                   if (m/^\[([a-z]{3}) ([a-z]{3}) (\s?\d{1,2}) (\d{2}):(\d{2}):(\d{2}) (\d{4})\] /ois) {
                         $current_position += length $&;
@@ -186,8 +187,9 @@ sub hi ($) {
 
                                     $_ = $';
 
-                                    #INFO ... || index($_, "\n") < length($s) - 1
-                                    $out .= v10 if 50 < length $_ || m/\n./;
+                                    my $rest = get_term_columns - $current_position + 1;
+                                    #FIXME length $_ > $rest + 1, because $_ contains \n
+                                    $out .= v10 if length $_ > $rest or m/\n./;
 
                                     if (m/^(\d+)[,.](\d{1,3})(\d*) sec/ois) {
                                           #FIXME \n
@@ -210,10 +212,9 @@ sub hi ($) {
                   }
             }
 
-
             #TODO highlight parts here
 
-            s/\bat (\S+) line (\d+)/at $1 line <red>$2<\/end>/g;
+            s/\bat (\S+) line (\d+)(\.|: )/($3 eq '.' ? "\n\t" : '')."at $1 line <red>$2<\/end>$3".($3 eq ': ' ? "\n\t" : '')/eg;
 
             s{([-a-z._/]+/)?([^/]+\.(?:pm|pl|tpl|cgi))}[<yellow>$1</end><bold yellow>$2</end>]ig
                   or
@@ -223,7 +224,7 @@ sub hi ($) {
             s/\b(LIMIT|SQL_CALC_FOUND_ROWS|GROUP BY|FROM|ON|SELECT|UPDATE|INSERT|DELETE|WHERE|ORDER BY|(?:(?:LEFT|INNER|RIGHT) )?JOIN)\b/<red>$1<\/end>/ig;
 
             s/\n$//;
-            $out .= $_ . v10;
+            $out .= '<white bold>'. $_ . '</end>' . v10;
       }
 
       my @colors;
@@ -233,7 +234,7 @@ sub hi ($) {
                   RESET.color( $colors[-1] || 'reset' );
             } elsif (m/<([^>]+)>/) {
                   push @colors, $1;
-                  color $1;
+                  RESET.color($1);
             } else {
                   $_
             }
