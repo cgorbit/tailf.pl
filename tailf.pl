@@ -156,7 +156,11 @@ sub hi ($) {
             $out .= v10;
 
             HIGHS: {
+                  my $current_position = 0;
+
                   if (m/^\[([a-z]{3}) ([a-z]{3}) (\s?\d{1,2}) (\d{2}):(\d{2}):(\d{2}) (\d{4})\] /ois) {
+                        $current_position += length $&;
+
                         $out .= sprintf '[%s %s %s %s%s:%s:%s %s%s] ',
                               $1, $2, $3, '<bold yellow>', $4, $5, $6, '</end>', $7;
 
@@ -167,6 +171,8 @@ sub hi ($) {
                         s/>/&gt;/g;
 
                         if (m/^\[(perl_)?(warn|emerg)\] /ois) {
+                              $current_position += length $&;
+
                               $out .= sprintf '[<%s%s%s%s%s] ',
                                     $2 eq 'emerg' ? 'bold ' : '', 'red>', $1, $2, '</end>';
 
@@ -174,6 +180,8 @@ sub hi ($) {
 
 
                               if (m/\[([^\]]+)\] /ois) {
+                                    $current_position += length $&;
+
                                     $out .= sprintf '[%s%s%s] ',
                                           '<green>', $1, '</end>';
 
@@ -213,7 +221,7 @@ sub hi ($) {
             # TODO s/Health/$ENV{NAME_PRJ}/
             s/\bHealth_[a-z_]+\b/<magenta>$&<\/end>/ig
                   and
-            s/\b(GROUP BY|FROM|ON|SELECT|UPDATE|INSERT|DELETE|WHERE|ORDER BY|(?:LEFT )?JOIN)\b/<red>$1<\/end>/ig;
+            s/\b(LIMIT|SQL_CALC_FOUND_ROWS|GROUP BY|FROM|ON|SELECT|UPDATE|INSERT|DELETE|WHERE|ORDER BY|(?:(?:LEFT|INNER|RIGHT) )?JOIN)\b/<red>$1<\/end>/ig;
 
             s/\n$//;
             $out .= $_ . v10;
@@ -256,3 +264,10 @@ sub clear_screen () {
       $last_line = '';
       print "\n\nCLEARING SCREEN at $time...\n", v10 x 40; $cleaner
 } }
+
+sub get_term_dimensions () {
+      #my ($rows, $columns) 
+      (`stty -a` =~ m/\brows (\d+); columns (\d+);/)[0, 1]
+}
+
+sub get_term_columns () { (get_term_dimensions)[1] }
