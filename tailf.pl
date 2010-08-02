@@ -209,6 +209,7 @@ sub hi ($) {
 
             s{([-a-z._/]+/)?([^/]+\.(?:pm|pl|tpl|cgi))}[<yellow>$1</end><bold yellow>$2</end>]ig
                   or
+            # TODO s/Health/$ENV{NAME_PRJ}/
             s/\bHealth_[a-z_]+\b/<magenta>$&<\/end>/ig
                   and
             s/\b(GROUP BY|FROM|ON|SELECT|UPDATE|INSERT|DELETE|WHERE|ORDER BY|(?:LEFT )?JOIN)\b/<red>$1<\/end>/ig;
@@ -251,5 +252,5 @@ sub clear_screen () {
       $cleaner ||= `clear`;
 
       $last_line = '';
-      print "CLEARING SCREEN...\n", v10 x 40; $cleaner
+      print "\n\nCLEARING SCREEN...\n", v10 x 40; $cleaner
 } }
