@@ -231,9 +231,9 @@ sub hi ($) {
             }
       } split /(<\/?[^>]+>)/, $out;
 
-      s/&lt;/</g;
-      s/&gt;/>/g;
-      s/&amp;/&/g;
+      $out =~ s/&lt;/</g;
+      $out =~ s/&gt;/>/g;
+      $out =~ s/&amp;/&/g;
 
       print $out;
 
