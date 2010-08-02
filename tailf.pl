@@ -205,7 +205,7 @@ sub hi ($) {
 
             #TODO highlight parts here
 
-            s/\bat (\S+) line (\d+)\./at $1 line <red>$2<\/end>./g;
+            s/\bat (\S+) line (\d+)/at $1 line <red>$2<\/end>/g;
 
             s{([-a-z._/]+/)?([^/]+\.(?:pm|pl|tpl|cgi))}[<yellow>$1</end><bold yellow>$2</end>]ig
                   or
