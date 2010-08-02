@@ -167,7 +167,7 @@ sub hi ($) {
 
                         if (m/^\[(perl_)?(warn|emerg)\] /ois) {
                               $out .= sprintf '[<%s%s%s%s%s] ',
-                                    $1 eq 'emerg' ? 'bold ' : '', 'red>', $1, $2, '</end>';
+                                    $2 eq 'emerg' ? 'bold ' : '', 'red>', $1, $2, '</end>';
 
                               $_ = $';
 
