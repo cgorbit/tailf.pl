@@ -30,7 +30,7 @@ my $max_time_wo_flush = 100_000;
 my $max_time_wo_clear = 550_000;
 
 my $n = shift || 10;
-my $begin_re = qr/\[[a-z]{3} [a-z]{3} \d{2} \d{2}:\d{2}:\d{2} \d{4}\]/i;
+my $begin_re = qr/\[[a-z]{3} [a-z]{3} \s?\d{1,2} \d{2}:\d{2}:\d{2} \d{4}\]/i;
 
 my $last_line;
 
@@ -155,7 +155,7 @@ sub hi ($) {
             $out .= v10;
 
             HIGHS: {
-                  if (m/^\[([a-z]{3}) ([a-z]{3}) (\d{2}) (\d{2}):(\d{2}):(\d{2}) (\d{4})\] /ois) {
+                  if (m/^\[([a-z]{3}) ([a-z]{3}) (\s?\d{1,2}) (\d{2}):(\d{2}):(\d{2}) (\d{4})\] /ois) {
                         $out .= sprintf '[%s %s %s %s%s:%s:%s %s%s] ',
                               $1, $2, $3, '<bold yellow>', $4, $5, $6, '</end>', $7;
 
