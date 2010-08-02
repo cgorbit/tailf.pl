@@ -34,7 +34,7 @@ my $max_time_wo_clear = 550_000;
 my $n = shift || 10;
 my $begin_re = qr/\[[a-z]{3} [a-z]{3} \s?\d{1,2} \d{2}:\d{2}:\d{2} \d{4}\]/i;
 
-my $last_line;
+my ($last_line, $last_was_long, $last_blocks_width);
 
 
 open F, "<$file_name" or die "Can't open file $file_name\n";
@@ -145,6 +145,8 @@ sub hi ($) {
       my $eq;
       my $out = '';
 
+      my ($blocks_width, $was_long);
+
       FOOBAR: {
             if (defined $last_line && $last_line eq $_) {
                   $eq = 1;
@@ -181,6 +183,7 @@ sub hi ($) {
 
                               if (m/\[([^\]]+)\] /ois) {
                                     $current_position += length $&;
+                                    $blocks_width = $current_position - 1;
 
                                     $out .= sprintf '[%s%s%s] ',
                                           '<green>', $1, '</end>';
@@ -189,11 +192,20 @@ sub hi ($) {
 
                                     my $rest = get_term_columns - $current_position + 1;
                                     #FIXME length $_ > $rest + 1, because $_ contains \n
-                                    $out .= v10 if length $_ > $rest or m/\n./;
+                                    if (length $_ > $rest or m/\n./) {
+                                          $out .= v10;
+                                          $was_long = 1;
+                                    } else {
+                                          $was_long = 0;
+                                    }
 
-                                    if (m/^(\d+)[,.](\d{1,3})(\d*) sec/ois) {
+                                    if (m/^(\d+)[,.](\d{1,3})(\d*) sec$/ois) {
                                           #FIXME \n
-                                          $out .= sprintf "%s%d.%03d%s%s s",
+
+                                          $out = sprintf "%s%s%d.%03d%s%s s",
+                                                (defined $last_line && !$last_was_long)
+                                                      ? v32 x $last_blocks_width 
+                                                      : 'Execution time: ',
                                                 ($1 > 0 || $2 > 10) ? '<bold red>' : '<yellow>',
                                                 $1, $2, '</end>', $3;
 
@@ -214,7 +226,8 @@ sub hi ($) {
 
             #TODO highlight parts here
 
-            s/\bat (\S+) line (\d+)(\.|: )/($3 eq '.' ? "\n\t" : '')."at $1 line <red>$2<\/end>$3".($3 eq ': ' ? "\n\t" : '')/eg;
+            #FIXME (\.|: |$)
+            s/\bat (\S+) line (\d+)(\.|: )/($3 eq '.' ? "\n\t" : '')."<white>at<\/end> $1 <white>line<\/end> <red>$2<\/end>$3".($3 eq ': ' ? "\n\t" : '')/eg;
 
             s{([-a-z._/]+/)?([^/]+\.(?:pm|pl|tpl|cgi))}[<yellow>$1</end><bold yellow>$2</end>]ig
                   or
@@ -247,6 +260,8 @@ sub hi ($) {
       print $out;
 
       $last_line = $text_copy;
+      $last_was_long = $was_long;
+      $last_blocks_width = $blocks_width;
 }
 
 sub size_changed () {
