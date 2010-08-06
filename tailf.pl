@@ -234,7 +234,7 @@ sub hi ($) {
             # TODO s/Health/$ENV{NAME_PRJ}/
             s/\bHealth_[a-z_]+\b/<magenta>$&<\/end>/ig
                   and
-            s/\b(LIMIT|SQL_CALC_FOUND_ROWS|GROUP BY|FROM|ON|SELECT|UPDATE|INSERT|DELETE|WHERE|ORDER BY|(?:(?:LEFT|INNER|RIGHT) )?JOIN)\b/<red>$1<\/end>/ig;
+            s/\b(LIMIT|SQL_NO_CACHE|SQL_CALC_FOUND_ROWS|GROUP BY|FROM|ON|SELECT|UPDATE|INSERT|DELETE|WHERE|ORDER BY|(?:(?:LEFT|INNER|RIGHT) )?JOIN)\b/<red>$1<\/end>/ig;
 
             s/\n$//;
             $out .= '<white bold>'. $_ . '</end>' . v10;
@@ -265,8 +265,7 @@ sub hi ($) {
 }
 
 sub size_changed () {
-      my $old_size = $file_size;
-      ($file_size = -s $file_name) != $old_size
+      $file_size * 1 != ($file_size = -s $file_name)
 }
 
 { my $cleaner;
