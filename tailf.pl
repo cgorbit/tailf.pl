@@ -25,6 +25,7 @@ my $file_name = shift;
 
 my $file_size = -s $file_name;
 my $move_length = 1000;
+my $clear_screen = 1;
 
 my $delay = 50_000;
 my $time_wo_new_lines = 0;
@@ -36,6 +37,9 @@ my $begin_re = qr/\[[a-z]{3} [a-z]{3} \s?\d{1,2} \d{2}:\d{2}:\d{2} \d{4}\]/i;
 
 my ($last_line, $last_was_long, $last_blocks_width);
 
+my @printed_chars = (qw{. * @ ^ % $ &}, '#');
+my $printed_dots = 0;
+my $printed_char = '.';
 
 open F, "<$file_name" or die "Can't open file $file_name\n";
 
@@ -51,6 +55,9 @@ while (1) {
 
       usleep $delay;
       $time_wo_new_lines += $delay;
+
+      print STDERR $printed_char
+            if ++$printed_dots < 80 && $printed_dots > 5;
 
       flush_buff if $time_wo_new_lines >= $max_time_wo_flush;
 }
@@ -123,7 +130,7 @@ sub iterate () {
       local $_ = $_;
 
       clear_screen 
-            if $time_wo_new_lines > $max_time_wo_clear && !is_buffer;
+            if $clear_screen && $time_wo_new_lines > $max_time_wo_clear && !is_buffer;
 
       $time_wo_new_lines = 0;
 
@@ -134,6 +141,10 @@ sub iterate () {
 
 sub flush_buff () {
       return unless defined $buff && length $buff;
+
+      $printed_dots = 0;
+      $printed_char = $printed_chars[ int rand @printed_chars ];
+
       hi $buff;
       $buff = '';
       1
@@ -232,8 +243,8 @@ sub hi ($) {
             s{([-a-z._/]+/)?([^/]+\.(?:pm|pl|tpl|cgi))}[<yellow>$1</end><bold yellow>$2</end>]ig
                   or
             # TODO s/Health/$ENV{NAME_PRJ}/
-            s/\bHealth_[a-z_]+\b/<magenta>$&<\/end>/ig
-                  and
+            #s/\bHealth_[a-z_]+\b/<magenta>$&<\/end>/ig
+                  #and
             s/\b(LIMIT|SQL_NO_CACHE|SQL_CALC_FOUND_ROWS|GROUP BY|FROM|ON|SELECT|UPDATE|INSERT|DELETE|WHERE|ORDER BY|(?:(?:LEFT|INNER|RIGHT) )?JOIN)\b/<red>$1<\/end>/ig;
 
             s/\n$//;
@@ -265,7 +276,9 @@ sub hi ($) {
 }
 
 sub size_changed () {
-      $file_size * 1 != ($file_size = -s $file_name)
+      #$file_size * 1 != ($file_size = -s $file_name)
+      my $old_size = $file_size;
+      ($file_size = -s $file_name) != $old_size
 }
 
 { my $cleaner;
