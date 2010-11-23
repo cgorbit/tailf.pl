@@ -240,7 +240,7 @@ sub hi ($) {
             #FIXME (\.|: |$)
             s/\bat (\S+) line (\d+)(\.|: )/($3 eq '.' ? "\n\t" : '')."<white>at<\/end> $1 <white>line<\/end> <red>$2<\/end>$3".($3 eq ': ' ? "\n\t" : '')/eg;
 
-            s{([-a-z._/]+/)?([^/]+\.(?:pm|pl|tpl|cgi))}[<yellow>$1</end><bold yellow>$2</end>]ig
+            s{((?:[0-9-a-z._/]+/)?)([^/]+\.(?:pm|pl|tpl|cgi)\b)}[<yellow>$1</end><bold yellow>$2</end>]ig
                   or
             # TODO s/Health/$ENV{NAME_PRJ}/
             #s/\bHealth_[a-z_]+\b/<magenta>$&<\/end>/ig
